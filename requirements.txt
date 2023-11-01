@@ -1,0 +1,4 @@
+fastapi[all]
+pycodestyle
+sqlalchemy
+alembic
