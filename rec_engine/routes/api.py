@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from rest.views.organizations import router as organizations_router
+from rest.routes import router as rest_router
 
-router = APIRouter()
+router = APIRouter(prefix='/api')
 
-router.include_router(organizations_router)
+router.include_router(rest_router)

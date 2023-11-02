@@ -32,4 +32,5 @@ class OrganizationController:
         org = OrganizationModel(**org_data)
         self._session.add(org)
         self._session.commit()
+        self._session.refresh(org)
         return org
