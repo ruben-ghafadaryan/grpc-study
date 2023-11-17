@@ -24,14 +24,13 @@ class OrganizationCreateSchema(OrganizationBaseSchema):
 
 
 class OrganizationFilterSchema(BaseModel):
-    name: Optional[str]
-    description: Optional[str]
-    country: Optional[str]
-    industry: Optional[str]
-    website: Optional[str]
+    name: Optional[str] = None
+    description: Optional[str] = None
+    country: Optional[str] = None
+    industry: Optional[str] = None
+    website: Optional[str] = None
 
 
 class OrganizationUpdateSchema(OrganizationFilterSchema):
-    founded_year: Optional[int]
-    employees_count: Optional[int]
-
+    founded_year: Optional[int] = None
+    employees_count: Optional[int] = None

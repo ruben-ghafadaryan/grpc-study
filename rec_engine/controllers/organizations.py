@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from models.organizations import OrganizationModel
 
+
 class OrganizationController:
     def __init__(self, session: Session):
         self._session = session
@@ -25,8 +26,12 @@ class OrganizationController:
         self._session.commit()
         return None
 
-    def find_organizations(self, filters: dict) -> list[object]:
-        return []
+    def find_organizations(self, filter_data: dict) -> list[object]:
+        filters = []
+        for key, value in filter_data.items():
+            if value is not None:
+                filters.append(getattr(OrganizationModel, key).ilike(f"%{value}%"))
+        return self._session.query(OrganizationModel).filter(*filters).all()
 
     def create_organization(self, org_data: dict) -> object:
         org = OrganizationModel(**org_data)

@@ -1,4 +1,13 @@
+# Web framework
 fastapi[all]
-pycodestyle
+
+# DB section
 sqlalchemy
 alembic
+
+# GRPC section
+grpcio
+grpcio-tools
+
+# Quality gates and testing section
+pycodestyle
