@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, inspect
 
 from database.sqlite import Base
 
@@ -14,3 +14,7 @@ class OrganizationModel(Base):
     description = Column(String, nullable=True)
     founded_year = Column(Integer, nullable=True)
     employees_count = Column(Integer, nullable=True)
+
+    def _asdict(self):
+        return {c.key: getattr(self, c.key)
+                for c in inspect(self).mapper.column_attrs}
