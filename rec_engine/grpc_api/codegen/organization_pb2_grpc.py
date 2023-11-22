@@ -4,7 +4,6 @@ import grpc
 
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 import grpc_api.codegen.organization_pb2 as organization__pb2
-
 from database.sqlite import get_session
 from controllers.organizations import OrganizationController
 
@@ -49,10 +48,15 @@ class OrganizationServiceStub(object):
                 request_serializer=organization__pb2.DeleteOrganizationRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
-        self.FindOrganization = channel.unary_stream(
-                '/OrganizationService/FindOrganization',
+        self.FindOrganizationAsStream = channel.unary_stream(
+                '/OrganizationService/FindOrganizationAsStream',
                 request_serializer=organization__pb2.FindOrganizationRequest.SerializeToString,
                 response_deserializer=organization__pb2.OrganizationResponse.FromString,
+                )
+        self.FindOrganizationAsList = channel.unary_unary(
+                '/OrganizationService/FindOrganizationAsList',
+                request_serializer=organization__pb2.FindOrganizationRequest.SerializeToString,
+                response_deserializer=organization__pb2.OrganizationResponseList.FromString,
                 )
 
 
@@ -63,39 +67,38 @@ class OrganizationServiceServicer(object):
     def GetOrganizationsAsList(self, request, context):
         session = next(get_session())
         with session:
-            controller = OrganizationController(session)
-            organizations = controller.get_all_organizations()
+            org_ctl = OrganizationController(session)
+            orgs = org_ctl.get_all_organizations()
             context.set_code(grpc.StatusCode.OK)
-            orgs = [organization__pb2.OrganizationResponse(**org._asdict()) for org in organizations]
-            return organization__pb2.OrganizationResponseList(organizations=orgs)
+            organizations = [organization__pb2.OrganizationResponse(**x._asdict()) for x in orgs]
+            return organization__pb2.OrganizationResponseList(organizations=organizations)
 
     def GetOrganizationsAsStream(self, request, context):
         session = next(get_session())
         with session:
-            controller = OrganizationController(session)
+            org_ctl = OrganizationController(session)
+            orgs = org_ctl.get_all_organizations()
             context.set_code(grpc.StatusCode.OK)
-            for org in controller.get_all_organizations():
+            for org in orgs:
                 yield organization__pb2.OrganizationResponse(**org._asdict())
 
     def GetOrganizationById(self, request, context):
         session = next(get_session())
         with session:
-            org = OrganizationController(session).get_organization_by_id(request.id)
-            if org is not None:
+            org_ctl = OrganizationController(session)
+            org = org_ctl.get_organization_by_id(request.id)
+            if org is None:
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                return google_dot_protobuf_dot_empty__pb2.Empty()
+            else:
                 context.set_code(grpc.StatusCode.OK)
                 return organization__pb2.OrganizationResponse(**org._asdict())
-            else:
-                context.set_code(grpc.StatusCode.NOT_FOUND)
-                context.set_details(f"Organization {request.id} not found!")
-                return organization__pb2.OrganizationResponse() # empty
-
 
     def CreateOrganization(self, request, context):
-        """Missing associated documentation comment in .proto file."""
         session = next(get_session())
         with session:
-            controller = OrganizationController(session)
-            org = controller.create_organization(
+            org_ctl = OrganizationController(session)
+            org = org_ctl.create_organization(
                 name=request.name,
                 description=request.description,
                 country=request.country,
@@ -104,29 +107,67 @@ class OrganizationServiceServicer(object):
                 founded_year=request.founded_year,
                 employees_count=request.employees_count
             )
-
             context.set_code(grpc.StatusCode.OK)
             return organization__pb2.OrganizationResponse(**org._asdict())
 
     def UpdateOrganization(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
+        session = next(get_session())
+        with session:
+            org_ctl = OrganizationController(session)
+            org = org_ctl.get_organization_by_id(request.id)
+            if org is None:
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                return google_dot_protobuf_dot_empty__pb2.Empty()
+
+            upd_dict = {}
+            for descriptor, value in request.ListFields():
+                if descriptor.name == 'id':
+                    continue
+                if value is not None:
+                    upd_dict[descriptor.name] = value
+            if not upd_dict:
+                context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+                return google_dot_protobuf_dot_empty__pb2.Empty()
+
+            org = org_ctl.update_organization(request.id, **upd_dict)
+            context.set_code(grpc.StatusCode.OK)
+            return organization__pb2.OrganizationResponse(**org._asdict())
 
     def DeleteOrganization(self, request, context):
         session = next(get_session())
         with session:
-            OrganizationController(session).delete_organization(request.id)
+            org_ctl = OrganizationController(session)
+            org_ctl.delete_organization(request.id)
             context.set_code(grpc.StatusCode.OK)
             return google_dot_protobuf_dot_empty__pb2.Empty()
 
-    def FindOrganization(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
+    def FindOrganizationAsStream(self, request, context):
+        orgs = self._get_filtered_results(request)
+        context.set_code(grpc.StatusCode.OK)
+        for org in orgs:
+            yield organization__pb2.OrganizationResponse(**org._asdict())
 
+    def FindOrganizationAsList(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        orgs = self._get_filtered_results(request)
+        context.set_code(grpc.StatusCode.OK)
+        organizations = [organization__pb2.OrganizationResponse(**x._asdict()) for x in orgs]
+        return organization__pb2.OrganizationResponseList(organizations=organizations)
+
+    def _get_filtered_results(self, request):
+        session = next(get_session())
+        with session:
+            org_ctl = OrganizationController(session)
+            filter_dict = {}
+            for descriptor, value in request.ListFields():
+                if value is not None:
+                    filter_dict[descriptor.name] = value
+            if not filter_dict:
+                orgs = org_ctl.get_all_organizations()
+            else:
+                orgs = org_ctl.find_organizations(**filter_dict)
+
+            return orgs
 
 def add_OrganizationServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -160,10 +201,15 @@ def add_OrganizationServiceServicer_to_server(servicer, server):
                     request_deserializer=organization__pb2.DeleteOrganizationRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
-            'FindOrganization': grpc.unary_stream_rpc_method_handler(
-                    servicer.FindOrganization,
+            'FindOrganizationAsStream': grpc.unary_stream_rpc_method_handler(
+                    servicer.FindOrganizationAsStream,
                     request_deserializer=organization__pb2.FindOrganizationRequest.FromString,
                     response_serializer=organization__pb2.OrganizationResponse.SerializeToString,
+            ),
+            'FindOrganizationAsList': grpc.unary_unary_rpc_method_handler(
+                    servicer.FindOrganizationAsList,
+                    request_deserializer=organization__pb2.FindOrganizationRequest.FromString,
+                    response_serializer=organization__pb2.OrganizationResponseList.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -279,7 +325,7 @@ class OrganizationService(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def FindOrganization(request,
+    def FindOrganizationAsStream(request,
             target,
             options=(),
             channel_credentials=None,
@@ -289,8 +335,25 @@ class OrganizationService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/OrganizationService/FindOrganization',
+        return grpc.experimental.unary_stream(request, target, '/OrganizationService/FindOrganizationAsStream',
             organization__pb2.FindOrganizationRequest.SerializeToString,
             organization__pb2.OrganizationResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def FindOrganizationAsList(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/OrganizationService/FindOrganizationAsList',
+            organization__pb2.FindOrganizationRequest.SerializeToString,
+            organization__pb2.OrganizationResponseList.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
