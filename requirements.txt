@@ -1,0 +1,17 @@
+# Web framework
+fastapi[all]
+
+# DB section
+sqlalchemy
+alembic
+
+# GRPC section
+grpcio
+grpcio-tools
+
+# Quality gates and testing section
+pycodestyle
+
+# graphQL section
+strawberry-graphql[fastapi]
+

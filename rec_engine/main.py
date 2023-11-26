@@ -1,16 +1,24 @@
-# This is a sample Python script.
+from fastapi import FastAPI
+import uvicorn
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+from routes.api import router as api_router
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+def create_app() -> FastAPI:
+    app_ = FastAPI()
+    app_.include_router(api_router)
+    return app_
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+
+app = create_app()
+
+
+# Health Check
+@app.get("/")
+def read_root():
+    return {"message": "Recommendation Engine is Up and Running"}
+
+
+# FastAPI application
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=9000, reload=True, log_level="info")
