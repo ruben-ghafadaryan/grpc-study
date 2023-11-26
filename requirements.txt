@@ -11,3 +11,7 @@ grpcio-tools
 
 # Quality gates and testing section
 pycodestyle
+
+# graphQL section
+strawberry-graphql[fastapi]
+
