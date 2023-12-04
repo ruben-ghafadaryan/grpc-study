@@ -4,12 +4,15 @@ import uvicorn
 from fastapi import FastAPI
 from strawberry.fastapi import GraphQLRouter
 
-from graphql_api.core import Query, Mutation
+from strawberry.subscriptions import GRAPHQL_TRANSPORT_WS_PROTOCOL, GRAPHQL_WS_PROTOCOL
 
-schema = strawberry.Schema(query=Query, mutation=Mutation)
-graphql_app = GraphQLRouter(schema)
+from graphql_api.core import Query, Mutation, Subscription
+
+schema = strawberry.Schema(query=Query, mutation=Mutation, subscription=Subscription)
+graphql_router = GraphQLRouter(schema,
+                               subscription_protocols=[GRAPHQL_WS_PROTOCOL, GRAPHQL_TRANSPORT_WS_PROTOCOL])
 app = FastAPI()
-app.include_router(graphql_app, prefix="/graphql")
+app.include_router(graphql_router, prefix="/graphql")
 
 
 if __name__ == "__main__":

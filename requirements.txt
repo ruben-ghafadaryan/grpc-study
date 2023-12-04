@@ -14,4 +14,6 @@ pycodestyle
 
 # graphQL section
 strawberry-graphql[fastapi]
+py-graphql-client
+```
 

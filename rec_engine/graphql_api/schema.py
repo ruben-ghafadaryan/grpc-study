@@ -15,6 +15,11 @@ class OrganizationType:
     employees_count: Optional[int] = None
 
 
+@strawberry.type
+class OrganziationCountType:
+    count: int
+
+
 @strawberry.input
 class OrganizationCreateInput:
     name: str

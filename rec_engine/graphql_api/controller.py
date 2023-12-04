@@ -1,4 +1,3 @@
-
 from graphql_api.schema import *
 from controllers.organizations import OrganizationController
 from database.sqlite import get_session
@@ -43,6 +42,13 @@ class Mutations:
 
 
 class Queries:
+    def get_organization_count(self) -> OrganziationCountType:
+        session = next(get_session())
+        with session:
+            org_ctl = OrganizationController(session)
+            count = org_ctl.get_organizations_count()
+            return OrganziationCountType(count=count)
+
     def get_all_organizations(self) -> List[OrganizationType]:
         session = next(get_session())
         with session:

@@ -7,6 +7,9 @@ class OrganizationController:
     def __init__(self, session: Session):
         self._session = session
 
+    def get_organizations_count(self) -> int:
+        return self._session.query(OrganizationModel).count()
+
     def get_all_organizations(self) -> list[object]:
         return self._session.query(OrganizationModel).all()
 
